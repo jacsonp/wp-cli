@@ -209,3 +209,50 @@ Feature: Export content.
       """
       5
       """
+
+  Scenario: Export posts from a given tag
+    Given a WP install
+    And these installed and active plugins:
+      """
+      wordpress-importer
+      """
+
+    When I run `wp site empty --yes`
+    And I run `wp post generate --post_type=post --count=10`
+    And I run `wp post list --post_type=post --format=count`
+    Then STDOUT should be:
+      """
+      10
+      """
+
+    When I run `for id in $(wp post list --posts_per_page=5 --ids); do wp post term add $id post_tag Yellow; done`
+    And I run `wp post list --post_type=post --tag=yellow --format=count`
+    Then STDOUT should be:
+      """
+      5
+      """
+
+    When I run `wp export --post_type=post --post_tag=yellow`
+    And save STDOUT 'Writing to file %s' as {EXPORT_FILE}
+    Then the {EXPORT_FILE} file should not contain:
+      """
+      <wp:category_nicename>yellow</wp:category_nicename>
+      """
+
+    When I run `wp site empty --yes`
+    Then STDOUT should not be empty
+
+    When I run `wp post list --post_type=post --format=count`
+    Then STDOUT should be:
+      """
+      0
+      """
+
+    When I run `wp import {EXPORT_FILE} --authors=skip`
+    Then STDOUT should not be empty
+
+    When I run `wp post list --post_type=post --format=count`
+    Then STDOUT should be:
+      """
+      5
+      """

@@ -112,17 +112,21 @@ COMMENT;
 
 	public function categories() {
 		$oxymel = new WP_Export_Oxymel;
-		$categories = $this->export->categories();
-		foreach( $categories as $term_id => $category ) {
-			$category->parent_slug = $category->parent? $categories[$category->parent]->slug : '';
-			$oxymel->tag( 'wp:category' )->contains
-				->tag( 'wp:term_id', $category->term_id )
-				->tag( 'wp:category_nicename', $category->slug )
-				->tag( 'wp:category_parent', $category->parent_slug )
-				->optional_cdata( 'wp:cat_name', $category->name )
-				->optional_cdata( 'wp:category_description', $category->description )
-				->end;
+
+		if ( ! isset( $this->export->taxonomy ) || $this->export->taxonomy == 'category' ) {
+			$categories = $this->export->categories();
+			foreach ( $categories as $term_id => $category ) {
+				$category->parent_slug = $category->parent ? $categories[ $category->parent ]->slug : '';
+				$oxymel->tag( 'wp:category' )->contains
+					->tag( 'wp:term_id', $category->term_id )
+					->tag( 'wp:category_nicename', $category->slug )
+					->tag( 'wp:category_parent', $category->parent_slug )
+					->optional_cdata( 'wp:cat_name', $category->name )
+					->optional_cdata( 'wp:category_description', $category->description )
+					->end;
+			}
 		}
+
 		return $oxymel->to_string();
 	}
 

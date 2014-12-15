@@ -40,8 +40,8 @@ class Export_Command extends WP_CLI_Command {
 	 * [--author=<author>]
 	 * : Export only posts by this author. Can be either user login or user ID.
 	 *
-	 * [--category=<name>]
-	 * : Export only posts in this category.
+	 * [--<taxonomy>=<term>]
+	 * : Export only posts with a given term.
 	 *
 	 * [--post_status=<status>]
 	 * : Export only posts with this status.
@@ -59,7 +59,7 @@ class Export_Command extends WP_CLI_Command {
 			'end_date'        => NULL,
 			'post_type'       => NULL,
 			'author'          => NULL,
-			'category'        => NULL,
+			'taxonomy'        => NULL,
 			'post_status'     => NULL,
 			'post__in'        => NULL,
 			'skip_comments'   => NULL,
@@ -126,8 +126,12 @@ class Export_Command extends WP_CLI_Command {
 		foreach ( $args as $key => $value ) {
 			if ( is_callable( array( $this, 'check_' . $key ) ) ) {
 				$result = call_user_func( array( $this, 'check_' . $key ), $value );
-				if ( false === $result )
-					$has_errors = true;
+			} else {
+				$result = call_user_func_array( array( $this, 'check_taxonomy' ), array( $key, $value ) );
+			}
+
+			if ( false === $result ) {
+				$has_errors = true;
 			}
 		}
 
@@ -230,16 +234,19 @@ class Export_Command extends WP_CLI_Command {
 		return true;
 	}
 
-	private function check_category( $category ) {
-		if ( is_null( $category ) )
+	private function check_taxonomy( $taxonomy, $term_slug = null ) {
+		if ( !isset( $term_slug ) || is_null( $term_slug ) ) {
 			return true;
+		}
 
-		$term = category_exists( $category );
+		$term = term_exists( $term_slug, $taxonomy );
 		if ( empty( $term ) || is_wp_error( $term ) ) {
-			WP_CLI::warning( sprintf( 'Could not find a category matching %s', $category ) );
+			WP_CLI::warning( sprintf( 'Could not find a term matching %s in taxonomy %s', $term_slug, $taxonomy ) );
 			return false;
 		}
-		$this->export_args['category'] = $category;
+
+		$this->export_args['taxonomy'][$taxonomy] = $term_slug;
+
 		return true;
 	}
 

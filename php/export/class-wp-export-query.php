@@ -14,7 +14,7 @@ class WP_Export_Query {
 		'author' => null,
 		'start_date' => null,
 		'end_date' => null,
-		'category' => null,
+		'taxonomy' => null,
 	);
 
 	private $post_ids;
@@ -25,7 +25,8 @@ class WP_Export_Query {
 	private $joins = array();
 
 	private $author;
-	private $category;
+	private $term;
+	public $taxonomy;
 
 	public $missing_parents = false;
 
@@ -71,12 +72,14 @@ class WP_Export_Query {
 	}
 
 	public function categories() {
-		if ( $this->category ) {
-			return array( $this->category );
+		if ( isset( $this->term ) && $this->term ) {
+			return array( $this->term );
 		}
+
 		if ( $this->filters['post_type'] ) {
 			return array();
 		}
+
 		$categories = (array) get_categories( array( 'get' => 'all' ) );
 
 		$this->check_for_orphaned_terms( $categories );
@@ -146,7 +149,7 @@ class WP_Export_Query {
 		$this->author_where();
 		$this->start_date_where();
 		$this->end_date_where();
-		$this->category_where();
+		$this->taxonomy_where();
 
 		$where = implode( ' AND ', array_filter( $this->wheres ) );
 		if ( $where ) $where = "WHERE $where";
@@ -216,18 +219,22 @@ class WP_Export_Query {
 		return strtotime( "$yyyy_mm +1month -1day" );
 	}
 
-	private function category_where() {
+	private function taxonomy_where() {
 		global $wpdb;
-		if ( 'post' != $this->filters['post_type'] ) {
+		if ( 'post' != $this->filters['post_type'] || ! isset( $this->filters['taxonomy'] ) ) {
 			return;
 		}
-		$category = $this->find_category_from_any_object( $this->filters['category'] );
-		if ( !$category ) {
+		$term = $this->find_taxonomy_from_any_object( $this->filters['taxonomy'] );
+
+		if ( ! $term ) {
 			return;
 		}
-		$this->category = $category;
+
+		$this->term = $term;
+		$this->taxonomy = key( $this->filters['taxonomy'] );
+
 		$this->joins[] = "INNER JOIN {$wpdb->term_relationships} AS tr ON (p.ID = tr.object_id)";
-		$this->wheres[] = $wpdb->prepare( 'tr.term_taxonomy_id = %d', $category->term_taxonomy_id );
+		$this->wheres[] = $wpdb->prepare( 'tr.term_taxonomy_id = %d', $term->term_taxonomy_id );
 	}
 
 	private function attachments_for_specific_post_types( $post_ids ) {
@@ -258,15 +265,19 @@ class WP_Export_Query {
 		return false;
 	}
 
-	private function find_category_from_any_object( $category ) {
-		if ( is_numeric( $category ) ) {
-			return get_term( $category, 'category' );
-		} elseif ( is_string( $category ) ) {
-			$term = term_exists( $category, 'category' );
-			return isset( $term['term_id'] )? get_term( $term['term_id'], 'category' ) : false;
-		} elseif ( isset( $category->term_id ) ) {
-			return get_term( $category->term_id, 'category' );
+	private function find_taxonomy_from_any_object( $taxonomy ) {
+		$taxonomy_slug = key( $taxonomy );
+		$term = array_pop( $taxonomy );
+
+		if ( is_numeric( $term ) ) {
+			return get_term( $term, $taxonomy_slug );
+		} elseif ( is_string( $term ) ) {
+			$term = term_exists( $term, $taxonomy_slug );
+			return isset( $term['term_id'] )? get_term( $term['term_id'], $taxonomy_slug ) : false;
+		} elseif ( isset( $term->term_id ) ) {
+			return get_term( $term->term_id, $taxonomy_slug );
 		}
+
 		return false;
 	}
 

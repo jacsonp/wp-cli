@@ -49,7 +49,7 @@ class SynopsisParser {
 		$p_name = '([a-z-_]+)';
 		$p_value = '([a-zA-Z-_|,]+)';
 
-		if ( '--<field>=<value>' === $token ) {
+		if ( '--<field>=<value>' === $token || '--<taxonomy>=<term>' === $token ) {
 			$param['type'] = 'generic';
 		} elseif ( preg_match( "/^<($p_value)>$/", $token, $matches ) ) {
 			$param['type'] = 'positional';
