@@ -72,6 +72,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 
 		$tables = self::get_table_list( $args, isset( $assoc_args['network'] ) );
 
+		$wpdb->query( "START TRANSACTION;" );
+
 		foreach ( $tables as $table ) {
 			list( $primary_keys, $columns ) = self::get_columns( $table );
 
@@ -105,6 +107,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 			}
 		}
 
+		$wpdb->query( "COMMIT;" );
+
 		if ( ! WP_CLI::get_config( 'quiet' ) ) {
 
 			$table = new \cli\Table();
@@ -123,6 +127,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 
 		if ( !empty( $args ) )
 			return $args;
+
+		$wpdb->query( "START TRANSACTION;" );
 
 		$prefix = $network ? $wpdb->base_prefix : $wpdb->prefix;
 		$matching_tables = $wpdb->get_col( $wpdb->prepare( "SHOW TABLES LIKE %s", $prefix . '%' ) );
@@ -160,6 +166,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 			unset( $matching_tables[ $key ] );
 
 		}
+
+		$wpdb->query( "COMMIT;" );
 
 		return array_values( $matching_tables );
 
@@ -225,6 +233,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 		$primary_keys = array();
 
 		$columns = array();
+		
+		$wpdb->query( "START TRANSACTION;" );
 
 		foreach ( $wpdb->get_results( "DESCRIBE $table" ) as $col ) {
 			if ( 'PRI' === $col->Key ) {
@@ -237,6 +247,8 @@ class Search_Replace_Command extends WP_CLI_Command {
 
 			$columns[] = $col->Field;
 		}
+
+		$wpdb->query( "COMMIT;" );
 
 		return array( $primary_keys, $columns );
 	}
